@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>СОУЛСОФОН</title>
+
+<style>
+body {
+    margin: 0;
+    background: radial-gradient(circle at top, #141414, #000);
+    font-family: Georgia, serif;
+    overflow: hidden;
+}
+
+/* ===== ЗАГОЛОВОК ===== */
+.header {
+    position: fixed;
+    top: 16px;
+    width: 100%;
+    text-align: center;
+    font-size: 72px;
+    letter-spacing: 12px;
+    color: #d4af37;
+    text-shadow: 0 0 22px #000;
+    z-index: 10;
+}
+
+/* ===== ГРОМКОСТЬ ===== */
+.volume-control {
+    position: fixed;
+    top: 30px;
+    left: 24px;
+    color: #d4af37;
+    font-size: 14px;
+    z-index: 10;
+}
+
+.volume-control input {
+    width: 170px;
+}
+
+/* ===== ОСНОВА ===== */
+.wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ===== КОЛЕСО ===== */
+.wheel-area {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, -50%);
+    transition: left 0.8s ease;
+    text-align: center;
+}
+
+.wrapper.spinning .wheel-area {
+    left: 28%;
+}
+
+canvas {
+    background: radial-gradient(circle, #1a1a1a, #050505);
+    border-radius: 50%;
+    box-shadow: inset 0 0 45px #000, 0 0 80px #000;
+}
+
+button {
+    margin-top: 18px;
+    padding: 14px 46px;
+    background: linear-gradient(#2a2a2a, #0a0a0a);
+    color: #d4af37;
+    border: 1px solid #555;
+    font-size: 17px;
+    letter-spacing: 2px;
+    cursor: pointer;
+}
+
+/* ===== ВИДЕО ===== */
+.video-area {
+    position: absolute;
+    right: 3%;
+    top: 56%;
+    transform: translateY(-50%);
+    width: 42%;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+.wrapper.spinning .video-area {
+    opacity: 1;
+}
+
+video {
+    width: 100%;
+    border-radius: 22px;
+    pointer-events: none;
+}
+
+.video-area.fade-out {
+    opacity: 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">СОУЛСОФОН</div>
+
+<div class="volume-control">
+    🔊 Громкость<br>
+    <input type="range" min="0" max="1" step="0.01" value="0.5" id="volumeSlider">
+</div>
+
+<div class="wrapper" id="wrapper">
+
+    <div class="wheel-area">
+        <canvas id="wheel" width="820" height="820"></canvas>
+        <button onclick="spin()">КРУТИТЬ</button>
+    </div>
+
+    <div class="video-area" id="videoArea">
+        <video id="video"></video>
+    </div>
+
+</div>
+
+<script>
+/* ===== ЧЕЛЛЕНДЖИ ===== */
+const challenges = [
+    { text: "Без блоков", color: "#3b5d3b" },
+    { text: "Только перекаты", color: "#3b5d3b" },
+    { text: "Без бафов", color: "#3b5d3b" },
+    { text: "Оружие без усилений", color: "#3b5d3b" },
+
+    { text: "Без лок-она", color: "#8a6f2a" },
+    { text: "Двуручный режим", color: "#8a6f2a" },
+    { text: "Без быстрого бега", color: "#8a6f2a" },
+
+    { text: "Без хилок на боссе", color: "#7a1f1f" },
+    { text: "Без брони", color: "#7a1f1f" },
+
+    { text: "🔥 БОСС ВСЛЕПУЮ", color: "#111" },
+    { text: "🔥 НО-ХИТ БОСС", color: "#111" }
+];
+
+/* ===== ВИДЕО (ДОБАВЛЯЙ СЮДА) ===== */
+const videoList = [
+    "video1.mp4",
+    "video2.mp4"
+];
+
+const canvas = document.getElementById("wheel");
+const ctx = canvas.getContext("2d");
+const video = document.getElementById("video");
+const wrapper = document.getElementById("wrapper");
+const videoArea = document.getElementById("videoArea");
+const volumeSlider = document.getElementById("volumeSlider");
+
+let currentVideoIndex = 0;
+let angle = 0;
+let spinning = false;
+let currentVolume = 0.5;
+let centerText = "";
+
+/* ===== ГРОМКОСТЬ ===== */
+volumeSlider.addEventListener("input", () => {
+    currentVolume = parseFloat(volumeSlider.value);
+    video.volume = currentVolume;
+});
+
+/* ===== ОТРИСОВКА ===== */
+function drawWheel() {
+    const r = canvas.width / 2;
+    const slice = 2 * Math.PI / challenges.length;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    challenges.forEach((c, i) => {
+        ctx.beginPath();
+        ctx.moveTo(r, r);
+        ctx.arc(r, r, r, angle + i * slice, angle + (i + 1) * slice);
+        ctx.fillStyle = c.color;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(r, r);
+        ctx.rotate(angle + (i + 0.5) * slice);
+        ctx.fillStyle = "#eee";
+        ctx.font = "18px Georgia";
+        ctx.textAlign = "right";
+        ctx.fillText(c.text, r - 36, 8);
+        ctx.restore();
+    });
+
+    ctx.fillStyle = "#d4af37";
+    ctx.beginPath();
+    ctx.moveTo(r - 24, 0);
+    ctx.lineTo(r + 24, 0);
+    ctx.lineTo(r, 52);
+    ctx.fill();
+
+    if (centerText) {
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 34px Georgia";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(centerText, r, r);
+    }
+}
+
+drawWheel();
+
+/* ===== ЗАТУХАНИЕ ЗВУКА ===== */
+function fadeOutVolume(duration = 1200) {
+    const startVolume = video.volume;
+    const startTime = performance.now();
+    function step(t) {
+        const p = Math.min((t - startTime) / duration, 1);
+        video.volume = startVolume * (1 - p);
+        if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
+
+/* ===== ВРАЩЕНИЕ ===== */
+function spin() {
+    if (spinning || videoList.length === 0) return;
+    spinning = true;
+
+    centerText = "";
+    drawWheel();
+
+    wrapper.classList.add("spinning");
+    videoArea.classList.remove("fade-out");
+
+    const slice = 2 * Math.PI / challenges.length;
+    const spins = 6;
+    const randomOffset = Math.random() * 2 * Math.PI;
+
+    const startAngle = angle;
+    const targetAngle = startAngle + spins * 2 * Math.PI + randomOffset;
+
+    video.src = videoList[currentVideoIndex];
+    currentVideoIndex = (currentVideoIndex + 1) % videoList.length;
+
+    video.currentTime = 0;
+    video.volume = currentVolume;
+    video.play();
+
+    const duration = 20000;
+    const start = performance.now();
+
+    function animate(t) {
+        const p = Math.min((t - start) / duration, 1);
+        angle = startAngle + (targetAngle - startAngle) * (1 - Math.pow(1 - p, 3));
+        drawWheel();
+        if (p < 1) requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    setTimeout(() => {
+        const normalized =
+            (2 * Math.PI - ((angle + Math.PI / 2) % (2 * Math.PI))) % (2 * Math.PI);
+        const index = Math.floor(normalized / slice);
+        centerText = challenges[index].text;
+
+        drawWheel();
+        fadeOutVolume();
+        videoArea.classList.add("fade-out");
+
+        setTimeout(() => {
+            video.pause();
+            video.volume = currentVolume;
+            wrapper.classList.remove("spinning");
+            angle %= 2 * Math.PI;
+            spinning = false;
+        }, 1200);
+    }, duration);
+}
+</script>
+
+</body>
+</html>
